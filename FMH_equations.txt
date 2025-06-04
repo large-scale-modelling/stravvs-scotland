@@ -1,0 +1,446 @@
+################ Farm Management Handbook 2020 ###################
+# Ben McCormick <benjamin.mccormick@abdn.ac.uk>
+# 
+# Structure follows the Extended Backus-Naur Form (EBNF) specification 
+# for the equations language in STRAVVS 
+# see: https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
+# 
+# (* The whole equation file, with comments and empty lines allowed *)
+# equation_file = equation_file_line , { equation_file_line };
+# equation_file_line = comment_line | empty_line | equation_line;
+# equation_line = ( equation | meta_equation ) , new_line;
+# empty_line = [ space ] , new_line;
+# comment_line = "#" , [ space , character ] , new_line;
+# 
+# (* An individual equation *)
+# equation = equation_name , ":" , space , ( catalysed_equation | non_catalysed_equation );
+# catalysed_equation = inputs , space_break , "-[" , space , catalysts , space , "]>" , space_break , effects , [ space_break , context ];
+# non_catalysed_equation = inputs , space_break , "->" , space_break , effects , [ space_break , context ];
+# equation_name = character_list;
+# 
+# (* An individual meta-equation *)
+# meta_equation = equation_name, "!" , space , "(" , equation_list , ")" , space_break , ( catalysed_meta_equation | non_catalysed_meta_equation );
+# catalysed_meta_equation = inputs , space_break , "-[" , space , catalysts , space , "]>" , space_break , meta_effects , [ context ];
+# non_catalysed_meta_equation = inputs , space_break , "->" , space_break , meta_effects , [ space_break , context ];
+# equation_list = equation_identifier , { "," , space , equation_identifier };
+# equation_identifer = equation_name | equation_left_match | equation_right_match | equation_substr_match;
+# equation_left_match = character_list , "*";
+# equation_right_match = "*" , character_list;
+# equation_substr_match = "*" , character_list , "*";
+# 
+# (* Inputs, catalysts, contexts, effects *)
+# (* Syntactically, there's not really any need to discriminate inputs, catalysts and effects *)
+# inputs = resource , { space , "+" , space , resource };
+# catalysts = resource , { space , "+" , space , resource };
+# effects = resource , { space , "+" , space , resource };
+# context = "|" , space , time , [ space , conditions ];
+# 
+# (* Meta-effects *)
+# meta_effects = meta_effect , { space , "+" , space , meta_effect };
+# meta_effect = distribution_parameter, space , resource_name , space , meta_operator , space , change_specifier;
+# meta_operator = increment | decrement;
+# increment = "+=" | "inc" | "increment";
+# decrement = "-=" | "dec" | "decrement";
+# change_specifier = absolute_change | percentage_change;
+# distribution_parameter = mean | stddev | variance | alpha | beta;
+# mean = "m" | "mu" | "mean" ;
+# stddev = "s" | "sigma" | "stddev" | "standard-deviation";
+# variance = "v" | "var" | "sigma^2" | "variance";
+# alpha = "a" | "alpha";
+# beta = "b" | "beta";
+# absolute_change = ( "a" , space , number ) | ( "abs" , space , number ) | ( "absolute" , space , number ) | ( "|" , number , "|" ) ;
+# percentage_change = ( "p" , space , number ) | ( "pct" , space , number ) | ( "percent" , space , number ) | ( number , "%");
+# 
+# (* Resources *)
+# resource = integer , space , resource_name;
+# resource_name = variable;
+# 
+# (* Time *)
+# 
+# time = ( one , space , time_unit ) | ( many , space , time_unit , "s" );
+# time_unit = "day" | "week" | "month" | "year";
+# 
+# (* Conditions *)
+# 
+# conditions = condition , { space , condition };
+# condition = "|" , space , scale , "/" , property , space , comparator , value;
+# scale = "global" | "regional" | "local" | "patch";
+# property = "$" , ( "ticks" | "months" | "procs" | "stocks" | "orders" | "stock-amounts" | "lca" );
+# comparator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+# value = number | decimal;
+# 
+# (* Spacing -- allow a new-line/tab line split 'space_break' terminal *)
+# space = space_character , { space_character };
+# space_character = " " | "\t";
+# space_break = space | ( new_line , "\t" , { "\t "} );
+# new_line = "\n" | "\r" | "\r\n";
+# 
+# (* Numbers *)
+# one = "1";
+# zero = "0";
+# other_digit = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+# non_zero_digit = one | other_digit;
+# digit = zero | non_zero_digit;
+# integer = non_zero_digit , { digit };
+# many = other_digit | ( non_zero_digit , digit , { digit } );
+# decimal = number , "." , { digit } , non_zero_digit;
+# number = integer | decimal;
+# 
+# (* Other basics *)
+# lower = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+#     | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z";
+# upper = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+#     | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z";
+# word_separator = "-" | "_" | ".";
+# alpha = upper | lower;
+# variable = alpha , { alpha | digit | word_separator };
+# character = alpha | digit | word_separator;
+# character_list = character , { character };
+# 
+# 
+################# BEGINS #########################################
+### services ###
+service.AI : 0.5 hours -[ 1 bull + 1 vet + 1 special.equipment ]> 1 AI | 1 day
+service.haulage : 2 hours -[ 1 special.equipment ]> 1 haulage | 1 day
+service.vet : 0.5 hours -[ 1 special.equipment ]> 1 vet | 1 day
+soil.analysis : 1 hours -[ 1 special.equipment ]> 1 analysis | 1 week
+##----------------------------------------------------------------------------------------
+### ground ###
+field : 1 stuff -[ 1 special.equipment ]> 500 straw.kg | 3 months | global/$months = 4
+fertiliser : 1 stuff -[ 1 special.equipment ]> 100 N.fertiliser.kg + 50 P.fertiliser.kg + 30 K.fertiliser.kg + 10 S.fertiliser.kg | 1 month
+##----------------------------------------------------------------------------------------
+### feed ###
+feed.A : 1 stuff -[ 1 special.equipment ]> 250 concentrates.kg | 3 months
+feed.B : 1 stuff -[ 1 special.equipment ]> 250 minerals.kg | 3 months
+##----------------------------------------------------------------------------------------
+### dairy ###
+# - catalysts = cow + bull
+# - data from Farm Management Handbook 2020/21
+# - effort to make annual data monthly and therefore totals are spread equally across months
+# + this means that there is no seasonality with indoor/outdoor food requirements
+# assumes annual time scale
+# mean hours/head FMH pg 370
+dairy.5000 : 7000 silage.kg + 750 concentrates.kg -[ 1 dairy.cow + 0.2 silage.ha + 0.27 grazing.ha + 0.5 vet + 1 AI + 35 hours ]> 5000 milk.l + 1 dairy.calf + 15.33 cow.excreta.m2 | 1 year
+dairy.7000 : 8500 silage.kg + 1800 concentrates.kg -[ 1 dairy.cow + 0.25 silage.ha + 0.24 grazing.ha + 1 vet + 1.5 AI + 35 hours ]> 7000 milk.l + 1 dairy.calf + 19.35 cow.excreta.m2 | 1 year
+dairy.8500 : 9200 silage.kg + 2800 concentrates.kg -[ 1 dairy.cow + 0.25 silage.ha + 0.24 grazing.ha + 1.3 vet + 1.7 AI + 35 hours ]> 8500 milk.l + 1 dairy.calf + 19.34 cow.excreta.m2 | 1 year
+dairy.10000 : 14600 silage.kg + 3800 concentrates.kg -[ 1 dairy.cow + 0.4 silage.ha + 1.5 vet + 1.8 AI + 35 hours ]> 10000 milk.l + 23.36 cow.excreta.m2 | 1 year
+# mean across calving times
+#replacement dairy cow : 1 dairy.calf + 7140 silage.kg + 1078 concentrates.kg + 960 straw.kg + 0.55 silage.ha + 0.23 grazing.ha > 1 dairy.cow | 3.5 years 
+# finishing dairy calf for meat
+dairy.rear.calf : 1 dairy.calf + 160 concentrates.kg + 35 hay.kg -[ 0.2 vet + 1 haulage + 35 hours ]> 110 beef.calf.kg + 1.8 cow.excreta.m2 | 3 months
+dairy.finish.calf.intensive : 110 beef.calf.kg + 2150 concentrates.kg + 400 straw.kg -[ 0.1 vet + 1.2 haulage + 35 hours ]> 265 beef.calf.kg + 10.9 cow.excreta.m2 | 9 months
+dairy.finish.calf.forage : 110 beef.calf.kg + 740 concentrates.kg + 6000 silage.kg -[ 0.42 grazing.ha + 0.3 silage.ha + 0.5 vet + 1.2 haulage + 35 hours ]> 315 beef.calf.kg + 25.5 cow.excreta.m2 | 21 months
+##----------------------------------------------------------------------------------------
+### beef ###
+# - excluded fertiliser & bedding
+# - data from Farm Management Handbook 2020/21
+# - effort to make annual data monthly and therefore totals are spread equally across months
+# + this means that there is no seasonality with indoor/outdoor food requirements
+# - averaged heifer & steer
+# - for concentrates, averaged cow & calf
+# used time for cow + calf
+##
+beef.hill.suckler.spring : 5400 silage.kg + 50 concentrates.kg -[ 1 beef.cow + 0.03 bull + 0.2 silage.ha + 0.6 grazing.ha + 0.5 vet + 1 haulage + 38 hours ]> 235 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 4
+beef.hill.suckler.autumn : 7500 silage.kg + 200 concentrates.kg + 250 creep.kg -[ 1 beef.cow + 0.03 bull + 0.375 silage.ha + 0.5 grazing.ha + 0.5 vet + 1 haulage + 38 hours ]> 335 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 9
+beef.upland.suckler.spring : 5400 silage.kg + 200 concentrates.kg + 600 straw.kg -[ 1 beef.cow + 0.03 bull + 0.23 silage.ha + 0.3 grazing.ha + 0.5 vet + 1 haulage + 38 hours ]> 275 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 4
+beef.upland.suckler.summer : 6400 silage.kg + 650 concentrates.kg + 500 straw.kg -[ 1 beef.cow + 0.03 bull + 0.28 silage.ha + 0.3 grazing.ha + 0.5 vet + 1 haulage + 38 hours ]> 350 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 7
+beef.upland.suckler.autumn : 7500 silage.kg + 550 concentrates.kg + 350 straw.kg -[ 1 beef.cow + 0.03 bull + 0.33 silage.ha + 0.34 grazing.ha + 0.5 vet + 1 haulage + 38 hours ]> 400 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 9
+beef.lowland.suckler.spring : 1500 silage.kg + 620 concentrates.kg + 1500 straw.kg -[ 1 beef.cow + 0.03 bull + 0.07 silage.ha + 0.34 grazing.ha + 0.5 vet + 1.7 haulage + 38 hours ]> 275 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 4
+beef.lowland.suckler.summer : 1100 concentrates.kg + 2200 straw.kg -[ 1 beef.cow + 0.03 bull + 0.38 grazing.ha + 0.5 vet + 1.7 haulage + 38 hours ]> 350 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 7
+beef.lowland.suckler.autumn : 1500 concentrates.kg + 1300 straw.kg -[ 1 beef.cow + 0.03 bull + 0.4 grazing.ha + 0.5 vet + 1.7 haulage + 38 hours ]> 395 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 9
+beef.spring.finished : 5000 silage.kg + 200 concentrates.kg -[ 1 beef.cow + 1 bull + 0.16 silage.ha + 0.3 grazing.ha + 1 vet + 38 hours ]> 324 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 10
+beef.finishing.overwinter.silage : 275 beef.calf.kg + 3250 silage.kg + 225 concentrates.kg + 200 straw.kg + 325 minerals.kg -[ 0.11 silage.ha + 0.22 grazing.ha + 0.5 vet + 1 haulage + 3 hours ]> 368 beef.calf.kg + 1.8 cow.excreta.m2 | 3 months | global/$months = 11
+beef.finishing.overwinter.straw : 275 beef.calf.kg + 225 concentrates.kg + 750 straw.kg + 660 minerals.kg -[ 0.22 grazing.ha + 0.5 vet + 1 haulage + 3 hours ]> 368 beef.calf.kg + 1.8 cow.excreta.m2 | 3 months | global/$months = 11
+# finished animals as £/deadweight
+beef.finishing.spring : 5000 silage.kg + 213 concentrates.kg -[ 0.16 silage.ha + 0.3 grazing.ha + 1.2 haulage + 6 hours ]> 324 beef.dw.kg + 5.7 cow.excreta.m2 | 6 months | global/$months = 4
+beef.finishing.spring-borne.12mo : 296 beef.calf.kg + 300 straw.kg + 1600 minerals.kg -[ 0.4 vet + 1.2 haulage + 3 hours ]> 318 beef.dw.kg + 2.8 cow.excreta.m2 | 3 months | global/$months = 4
+beef.finishing.autumn-borne.18mo : 400 beef.calf.kg + 4150 silage.kg + 655 minerals.kg -[ 0.135 silage.ha + 0.3 vet + 1.2 haulage + 6 hours ]> 325 beef.dw.kg + 5.7 cow.excreta.m2 | 6 months | global/$months = 9
+beef.finishing.spring-borne.20mo : 370 beef.calf.kg + 225 concentrates.kg + 700 silage.kg -[ 0.215 grazing.ha + 0.2 vet + 1.2 haulage + 8 hours ]> 324 beef.dw.kg + 7.6 cow.excreta.m2 | 8 months | global/$months = 4
+beef.finishing.summer : 435 beef.calf.kg + 279 minerals.kg -[ 0.215 grazing.ha + 0.2 vet + 1.2 haulage + 5 hours ]> 325 beef.dw.kg + 4.8 cow.excreta.m2 | 5 months | global/$months = 7
+beef.finishing.dairy.bull : 1 dairy.calf + 2225 minerals.kg + 400 straw.kg -[ 0.2 vet + 1 haulage + 10 hours ]> 283 beef.dw.kg + 9.5 cow.excreta.m2 | 10 months
+beef.finishing.dairy.steer.24mo : 1 dairy.calf + 150 concentrates.kg + 635 minerals.kg + 6200 silage.kg -[ 0.31 silage.ha + 0.42 grazing.ha + 0.5 vet + 1.2 haulage + 24 hours ]> 325 beef.dw.kg + 14.9 cow.excreta.m2 | 2 years
+#
+# replacement cow : 1 beef.calf -> 1 beef.cow | 7 years
+#
+beef.croft.upland : 5400 silage.kg + 280 concentrates.kg + 600 straw.kg -[ 1 beef.cow + 0.1 bull + 0.27 silage.ha + 0.4 grazing.ha + 0.5 vet + 1.5 haulage + 38 hours ]> 253 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 10
+beef.croft.hill : 6000 silage.kg + 325 concentrates.kg -[ 1 beef.cow + 0.1 bull + 0.3 silage.ha + 0.4 grazing.ha + 0.5 vet + 1.5 haulage + 38 hours ]> 210 beef.calf.kg + 24.3 cow.excreta.m2 | 1 year | global/$months = 10
+#
+##----------------------------------------------------------------------------------------
+# prices of lambs autum
+# hours based on ewe, lamb & proportionate tup
+sheep.extensive.80% : 1800 sheep.concentrate.kg + 3000 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 6.5 vet + 11 haulage ]> 51 sheep.lamb.store + 160 wool.kg + 219.7 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.extensive.90% : 1900 sheep.concentrate.kg + 3000 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 6.5 vet + 12.5 haulage ]> 51 sheep.lamb.store + 10 sheep.lamb.finisher + 160 wool.kg + 227 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.extensive.100% : 2000 sheep.concentrate.kg + 3000 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 6.5 vet + 14 haulage ]> 56 sheep.lamb.store + 15 sheep.lamb.finisher + 160 wool.kg + 234.2 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.improvedhill.110% : 2500 sheep.concentrate.kg + 3500 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 8.5 vet + 15.5 haulage ]> 10 sheep.lamb.ewe + 10 sheep.lamb.finisher + 62 sheep.lamb.store + 250 wool.kg + 242.4 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.improvedhill.120% : 3000 sheep.concentrate.kg + 3500 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 8.5 vet + 17 haulage ]> 20 sheep.lamb.ewe + 52 sheep.lamb.store + 20 sheep.lamb.finisher + 250 wool.kg + 249.7 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.improvedhill.130% : 3500 sheep.concentrate.kg + 3500 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 8.5 vet + 18.7 haulage ]> 30 sheep.lamb.ewe + 42 sheep.lamb.store + 30 sheep.lamb.finisher + 250 wool.kg + 249.7 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.draftblackface.130% : 3500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10.5 grazing.ha + 8.8 vet + 26.5 haulage ]> 33 sheep.lamb.ewe + 65 sheep.lamb.finisher + 32 sheep.lamb.store + 250 wool.kg + 277.4 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.draftblackface.140% : 4000 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10.5 grazing.ha + 9 vet + 27.9 haulage ]> 43 sheep.lamb.ewe + 27 sheep.lamb.store + 70 sheep.lamb.finisher + 250 wool.kg + 284.7 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.draftblackface.150% : 4500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10.5 grazing.ha + 9 vet + 29 haulage ]> 53 sheep.lamb.ewe + 22 sheep.lamb.store + 75 sheep.lamb.finisher + 250 wool.kg + 292 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.crosssbred.150% : 3500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10 grazing.ha + 2 silage.ha + 8.8 vet + 26.5 haulage ]> 120 sheep.lamb.finisher + 30 sheep.lamb.store + 270 wool.premium.kg + 292 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.crosssbred.160% : 4000 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10 grazing.ha + 2 silage.ha + 9 vet + 27.9 haulage ]> 140 sheep.lamb.finisher + 20 sheep.lamb.store + 270 wool.premium.kg + 299.3 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.crosssbred.170% : 4500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 10 grazing.ha + 2 silage.ha + 9 vet + 29 haulage ]> 160 sheep.lamb.finisher + 10 sheep.lamb.store + 270 wool.premium.kg + 306.6 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.purebred.150% : 3500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 2 silage.ha + 11 vet + 22 haulage ]> 25 sheep.lamb.ewe + 75 sheep.lamb.finisher + 28 sheep.lamb.store + 270 wool.premium.kg + 275.9 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.purebred.160% : 4000 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 2 silage.ha + 11 vet + 23 haulage ]> 35 sheep.lamb.ewe + 85 sheep.lamb.finisher + 18 sheep.lamb.store + 270 wool.premium.kg + 283.2 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.purebred.170% : 4500 sheep.concentrate.kg + 12600 hay.kg -[ 100 sheep.ewe + 3 sheep.tup + 10 grazing.ha + 2 silage.ha + 11.5 vet + 24.8 haulage ]> 45 sheep.lamb.ewe + 95 sheep.lamb.finisher + 8 sheep.lamb.store + 270 wool.premium.kg + 290.5 sheep.excreta.m2 | 1 year | global/$months = 8
+sheep.early.140% : 9000 sheep.concentrate.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 5.6 grazing.ha + 2.4 silage.ha + 8.5 vet + 26.8 haulage ]> 140 sheep.lamb.finisher + 270 wool.premium.kg + 284.7 sheep.excreta.m2 | 1 year | global/$months = 6
+sheep.early.150% : 10250 sheep.concentrate.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 5.6 grazing.ha + 2.4 silage.ha + 8.5 vet + 28.3 haulage ]> 150 sheep.lamb.finisher + 270 wool.premium.kg + 292 sheep.excreta.m2 | 1 year | global/$months = 6
+sheep.early.160% : 11000 sheep.concentrate.kg -[ 100 sheep.ewe + 2.5 sheep.tup + 5.6 grazing.ha + 2.4 silage.ha + 8.5 vet + 29.6 haulage ]> 160 sheep.lamb.finisher + 270 wool.premium.kg + 299.3 sheep.excreta.m2 | 1 year | global/$months = 6
+sheep.easycare.140% : 750 sheep.concentrate.kg -[ 100 sheep.ewe + 2 sheep.tup + 8.5 grazing.ha + 1.7 silage.ha + 6.7 vet + 18.3 haulage ]> 10 sheep.lamb.ewe + 68 sheep.lamb.finisher + 40 sheep.lamb.store + 268.6 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.easycare.150% : 750 sheep.concentrate.kg -[ 100 sheep.ewe + 2 sheep.tup + 8.5 grazing.ha + 1.7 silage.ha + 6.8 vet + 19.6 haulage ]> 20 sheep.lamb.ewe + 68 sheep.lamb.finisher + 40 sheep.lamb.store + 275.9 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.easycare.160% : 750 sheep.concentrate.kg -[ 100 sheep.ewe + 2 sheep.tup + 8.5 grazing.ha + 1.7 silage.ha + 6.9 vet + 21 haulage ]> 30 sheep.lamb.ewe + 68 sheep.lamb.finisher + 40 sheep.lamb.store + 283.2 sheep.excreta.m2 | 1 year | global/$months = 9
+# converted area of swede & rape to tonnes ** BEN** revisit?
+sheep.gimmers : 100 sheep.lamb.ewe + 1500 sheep.concentrate.kg + 5000 hay.kg -[ 112.5  swede.feed.t + 3 grazing.ha + 4.5 vet + 22.8 haulage ]> 98 sheep.ewe + 270 wool.premium.kg + 163.3 sheep.excreta.m2 | 11 months | global/$months = 9
+sheep.finished.rape : 100 sheep.lamb.store + 500 sheep.concentrate.kg -[ 2 rape.ha + 1 grazing.ha + 2.3 vet + 17 haulage ]> 98 sheep.lamb.finisher + 29.7 sheep.excreta.m2 | 2 months | global/$months = 9
+sheep.finished.indoors : 100 sheep.lamb.store + 4020 barley.DM.kg + 1610 fodderbeet.DM.kg + 970 concentrates.kg + 300 hay.kg -[ 2.3 vet + 15.2 haulage ]> 98 sheep.lamb.finisher + 29.7 sheep.excreta.m2 | 2 months | global/$months = 12
+sheep.finished.swede : 100 sheep.lamb.store + 1500 sheep.concentrate.kg -[ 0.5 hay.ha + 99.75  swede.feed.t + 8 grazing.ha + 4.9 vet + 17.3 haulage ]> 96 sheep.lamb.finisher + 87.3 sheep.excreta.m2 | 6 months | global/$months = 9
+# crofts hire a tup @ £5.5/ewe but we will let them own one for now
+sheep.croft.80% : 180 sheep.concentrate.kg -[ 10 sheep.ewe + 1 sheep.tup + 1.2 vet + 1.5 haulage ]> 5 sheep.lamb.store + 16 wool.kg + 21.9 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.croft.120% : 300 sheep.concentrate.kg -[ 10 sheep.ewe + 1 sheep.tup + 1.2 vet + 1.8 haulage + 1 grazing.ha + 0.2 silage.ha ]> 8 sheep.lamb.store + 1 sheep.lamb.finisher + 25 wool.kg + 24.1 sheep.excreta.m2 | 1 year | global/$months = 9
+sheep.croft.160% : 500 sheep.concentrate.kg -[ 10 sheep.ewe + 1 sheep.tup + 1.2 vet + 3 haulage + 2 grazing.ha + 0.3 silage.ha ]> 3 sheep.lamb.store + 13 sheep.lamb.finisher + 27 wool.premium.kg + 27.7 sheep.excreta.m2 | 1 year | global/$months = 9
+#
+#
+## red deer
+# calculated output as kg dead weight and summed stag and hind (same value)
+deer.lowland : 20500 concentrates.kg + 161200 silage.kg -[ 100 deer.hind + 3 deer.stag + 5.2 silage.ha + 13 grazing.ha + 8 vet + 1545 hours ]> 4069 deer.kg + 415.8 deer.cull.kg + 18.6 antler.kg + 328.3 deer.excreta.m2 | 18 months | global/$months = 8
+deer.upland : 11000 concentrates.kg + 4200 hay.kg -[ 100 deer.hind + 3 deer.stag + 0.6 hay.ha + 10 grazing.ha + 8 vet + 1545 hours ]> 43 deer.calf.stag + 35 deer.calf.hind + 7 deer.cull.kg + 16.5 antler.kg + 205.1 deer.excreta.m2 | 6 months | global/$months = 11
+deer.finishing : 100 deer.calf.stag + 10900 concentrates.kg + 80600 silage.kg -[ 2.6 silage.ha + 5.5 grazing.ha + 4.9 vet + 1500 hours ]> 5626 deer.kg + 4.9 antler.kg + 88.2 deer.excreta.m2 | 10 months | global/$months = 11
+#
+#
+## pig
+# just taking average prices (not premium)
+# calculated per litter @ 2.25 litters/sow/year = 5mo
+pig.breeding.indoor : 31.3 pig.food.creep.kg + 124.6 pig.food.weaner.kg + 363.8 pig.food.rearing.kg + 541.7 pig.food.sow.kg -[ 1 pig.sow + 0.01 pig.boar + 0.2 vet + 12.7 hours ]> 12 pig.weaner + 1.7 pig.excreta.m2 | 5 months
+pig.breeding.outdoor : 18 pig.food.weaner.kg + 541.7 pig.food.sow.kg -[ 1 pig.sow + 0.01 pig.boar + 0.2 vet + 0.07 land.ha + 0.7 haulage + 12.7 hours ]> 12 pig.weaner + 1.7 pig.excreta.m2 | 5 months
+pig.finishing : 100 pig.weaner + 220 pig.food.sow.kg -[ 0.03 vet + 57.5 hours ]> 97 pig.finisher + 9.1 pig.excreta.m2 | 3 months
+#
+## poultry
+# feed based on 52 weeks rather than 72
+chicken.eggs : 27 chicken.feed.kg -[ 1 chicken.hen + 0.0004 ha + 0.36 hours ]> 272 chicken.egg + 0.008 chicken.excreta.m2 | 1 year
+chicken.broiler : 100 chicken.chick + 36 chicken.feed.kg -[ 5.5 m2 + 1.4 hours ]> 94 chicken.finisher + 0.6 chicken.excreta.m2 | 50 days
+#
+chicken.croft : 50.3 chicken.feed.kg -[ 1 chicken.croft.hen + 0.0004 ha + 0.36 hours ]> 184 chicken.croft.egg + 0.008 chicken.excreta.m2 | 1 year
+##----------------------------------------------------------------------------------------
+### carcass ###
+# - mean saleable meat from all weights of holstein bull with 345kg carcass 
+# - Farm Management Handbook assumes 73% meat, but Jones et al (see offal below) assume lower 59.75% dressed meat
+# - https://ahdb.org.uk/news/how-much-is-each-cut-of-beef-worth-towards-the-total-retail-value-of-the-carcase-meat
+# - https://ahdb.org.uk/news/uk-hide-prices-stable-so-far-in-2022
+#
+#abattoir.A : 1 beef.heifer -> 206.7 beef.meat.kg + 137.3 cow.waste.kg | 1 day
+#abattoir.B : 1 beef.steer -> 206.7 beef.meat.kg + 137.3 cow.waste.kg | 1 day
+#abattoir : 1 beef.yearling -> 206.7 beef.meat.kg + 137.3 cow.waste.kg | 2 weeks
+beef.processing : 345 beef.dw.kg -[ 2 hours ]> 6.9 beef.fillet.kg + 13.8 beef.sirloin.kg + 13.8 beef.D.rump.kg + 3.45 beef.tail.kg + 13.8 beef.thick.flank.kg + 24.15 beef.topside.kg + 20.7 beef.silverside.kg + 13.8 beef.flat.brisket.kg + 148.4 beef.mince.kg + 86.3 non.meat.kg | 1 day
+#
+## sheep
+# approximate dead weight across different breeds
+sheep.processing : 1 sheep.lamb.finisher -> 17 sheep.kg | 1 day
+## deer
+#deer.processing : 1 deer.finisher -> 58 deer.kg | 1 day
+## pig
+pig.processing : 1 pig.finisher -> 82.9 pig.kg | 1 day
+#
+### carcass processing ###
+#
+# - https://www.mdpi.com/2071-1050/9/7/1089/htm [breakdown of carcass]
+# - https://cdnsciencepub.com/doi/pdf/10.4141/cjas84-007 [quantities, here using mean of small & large in Table 2]
+# - no weight for neck, shank, tongue [http://nosetotailapp.com/meat-cuts/beef/tongue], (gizzard)
+# - only bulk weight for inedible waste
+###
+# beef.waste : 137.3 non.meat-> 93.5 offal.kg + 43.8 inedible-waste.kg
+# offal : offal.kg-> 4.1 cow.liver.kg + 0.8 cow.kidney.kg + 1.3 cow.heart.kg + 4.4 cow.lung.trachea.kg + 1.5 cow.tongue.kg + 0.7 cow.spleen.kg + 5.1 cow.stomach.kg + 11 cow.intestines.kg + 11 cow.head.kg + 7.1 cow.trotter.kg
+# other : inedible-waste-> reprocessed (blood + hoof + horns + trotters + bone + glands + feathers + fat + 36 skin.kg) 
+# disposed (GItractcontent + trimming + fetus)
+#
+### waste destination ###
+# cosmetics : reprocessed-> 
+# pharmaceuticals : reprocessed-> 
+# fabrics : reprocessed-> 
+# animal.feed : reprocessed disposed
+# biofuel : disposed->
+# fertiliser : disposed->
+#
+### dairy ###
+milk.processing : milk.l -> liquid.milk + butter + cheddar.cheese + longlife.cheese + shortlife.cheese + blue.cheese + other.cheese + cream + yoghurt + condensed.milk + powdered.milk + other.milk + 
+#
+##----------------------------------------------------------------------------------------
+### Crop inputs ###
+# - data from the Farm Management Handbook
+# - assumes values per hectare
+# - the number of passes for spraying is approximated
+# - timing from https://www.rhet.org.uk/media/1191/crops-and-growing-fact-cards-v1-web.pdf
+#
+# - https://www.rhet.org.uk/media/1191/crops-and-growing-fact-cards-v1-web.pdf
+# -- 20% wheat for livestock
+# -- 5% wheat for human consumption
+# -- 75% for distilleries **winter wheat**
+#
+wheat.winter.low : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 6 wheat.grain.t + 3.2 wheat.straw.t | 7 months | global/$months = 3
+wheat.winter.medium : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 8 wheat.grain.t + 4.2 wheat.straw.t | 7 months | global/$months = 3
+wheat.winter.high : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 10 wheat.grain.t + 5.2 wheat.straw.t | 7 months | global/$months = 3
+#
+wheat.spring.low : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 4.5 wheat.grain.t + 2.5 wheat.straw.t | 11 months | global/$months = 9
+wheat.spring.medium : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 6.5 wheat.grain.t + 3.6 wheat.straw.t | 11 months | global/$months = 9
+wheat.spring.high : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 8.5 wheat.grain.t + 4.7 wheat.straw.t | 11 months | global/$months = 9
+#
+barley.winter.low : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 6 barley.grain.t + 3.3 barley.straw.t | 5 months | global/$months = 3
+barley.winter.medium : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 7.5 barley.grain.t + 4.1 barley.straw.t | 5 months | global/$months = 3
+barley.winter.high : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 9 barley.grain.t + 5.0 barley.straw.t | 5 months | global/$months = 3
+#
+barley.spring.low : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 4 barley.grain.t + 2.1 barley.straw.t | 11 months | global/$months = 9
+barley.spring.medium : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 5.5 barley.grain.t + 2.9 barley.straw.t | 11 months | global/$months = 9
+barley.spring.high : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 7.5 barley.grain.t + 3.9 barley.straw.t | 11 months | global/$months = 9
+#
+oats.winter.low : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 5 oat.grain.t + 3.2 oat.straw.t | 6 months | global/$months = 3
+oats.winter.medium : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 7.5 oat.grain.t + 4.7 oat.straw.t | 6 months | global/$months = 3
+oats.winter.high : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 9 oat.grain.t + 5.7 oat.straw.t | 11 months | global/$months = 3
+#
+oats.spring.low : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 3.5 oat.grain.t + 2.1 oat.straw.t | 11 months | global/$months = 9
+oats.spring.medium : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 5 oat.grain.t + 3 oat.straw.t | 11 months | global/$months = 9
+oats.spring.high : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 6.5 oat.grain.t + 3.9 oat.straw.t | 11 months | global/$months = 9
+#
+#triticale.low : 230 triticale.seed.kg + 180 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 ha + 18 hours ]> 4 triticale.grain.t + 2.6 straw.t
+#triticale.medium : 230 triticale.seed.kg + 180 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 ha + 18 hours ]> 6 triticale.grain.t + 3.9 straw.t
+#triticale.high : 230 triticale.seed.kg + 180 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 ha + 18 hours ]> 8 triticale.grain.t + 5.2 straw.t
+#
+oilseedrape.winter.low : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 3 OSR.grain.t | 12 months | global/$months = 8
+oilseedrape.winter.medium : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 4 OSR.grain.t | 12 months | global/$months = 8
+oilseedrape.winter.high : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 5 OSR.grain.t | 12 months | global/$months = 8
+#
+# no data on timing, but unlikely to have much in Scotland because growing season too short
+#oilseedrape.spring.low : 5 OSR.seed.kg + 100 N.fertiliser.kg + 28 P.fertiliser.kg + 22 K.fertiliser.kg + 40 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 2 spray.ha + 1 ha + 16 hours ]> 1.8 OSR.grain.t | 12 months | global/$months = 8
+#oilseedrape.spring.medium : 5 OSR.seed.kg + 100 N.fertiliser.kg + 28 P.fertiliser.kg + 22 K.fertiliser.kg + 40 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 2 spray.ha + 1 ha + 16 hours ]> 2.5 OSR.grain.t | 12 months | global/$months = 8
+#oilseedrape.spring.high : 5 OSR.seed.kg + 100 N.fertiliser.kg + 28 P.fertiliser.kg + 22 K.fertiliser.kg + 40 S.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 2 spray.ha + 1 ha + 16 hours ]> 3 OSR.grain.t | 12 months | global/$months = 8
+#
+fieldbean.spring.low : 250 bean.seed.kg + 40 P.fertiliser.kg + 40 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 fieldbean.spring.ha + 16 hours ]> 2.5 beans.t | 6 months | global/$months = 3
+fieldbean.spring.medium : 250 bean.seed.kg + 40 P.fertiliser.kg + 40 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 fieldbean.spring.ha + 16 hours ]> 5 beans.t | 6 months | global/$months = 3
+fieldbean.spring.high : 250 bean.seed.kg + 40 P.fertiliser.kg + 40 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 fieldbean.spring.ha + 16 hours ]> 6 beans.t | 6 months | global/$months = 3
+#
+# suffers from wet weather
+peas.spring.low : 250 pea.seed.kg + 20 P.fertiliser.kg + 30 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 peas.spring.ha + 16 hours ]> 2.5 peas.t | 6 months | global/$months = 3
+peas.spring.medium : 250 pea.seed.kg + 20 P.fertiliser.kg + 30 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 peas.spring.ha + 16 hours ]> 4 peas.t | 6 months | global/$months = 3
+peas.spring.high : 250 pea.seed.kg + 20 P.fertiliser.kg + 30 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.peas.ha + 4 spray.ha + 1 peas.spring.ha + 16 hours ]> 5.5 peas.t | 6 months | global/$months = 3
+#
+# grown in glasshouses over winter then bought and transplanted into the ground
+# can be planted later and harvested up to November
+cauliflower : 38000 cauliflower.module + 290 N.fertiliser.kg + 100 P.fertiliser.kg + 175 K.fertiliser.kg -[ 1 fertiliser.ha + 4 spray.ha + 1 ha + 280 hours ]> 16.8 cauliflower.t | 3 months | global/$months = 3
+broccoli : 46000 broccoli.module + 250 N.fertiliser.kg + 100 P.fertiliser.kg + 175 K.fertiliser.kg -[ 1 fertiliser.ha + 4 spray.ha + 1 ha + 280 hours ]> 10 broccoli.t | 3 months | global/$months = 3
+#
+# relatively rare system as silage is more reliable in worse weather and kept over winter
+# unclear number of spray passes
+timothy_hay : 15 timothygrass.seed.kg + 80 N.fertiliser.kg + 40 P.fertiliser.kg + 48 K.fertiliser.kg -[ 1 mow.ha + 1 fertiliser.ha + 1 spray.ha + 1 ha ]> 7.5 hay.t | 6 months | global/$months = 3
+#
+### Forage crops ###
+# - data from the FAS technical note
+# https://www.fas.scot/downloads/technical-note-tn733-forage-crops-for-livestock/
+#
+kale : 4 kale.seed.kg + 160 N.fertiliser.kg + 50 P.fertiliser.kg + 170 K.fertiliser.kg -[ 1 fertiliser.ha + 1 harvest.forage.ha + 1 fodder.ha + 1 spray.ha + 6 hours ]> 7.5 kale.feed.t | 3 months | global/$months = 5
+rape : 8 rape.seed.kg + 100 N.fertiliser.kg + 25 P.fertiliser.kg + 35 K.fertiliser.kg -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 1 fodder.ha + 6 hours ]> 4.5 rape.feed.t | 4 months | global/$months = 4
+chicory : 10 chicory.seed.kg + 50 N.fertiliser.kg + 25 P.fertiliser.kg + 25 K.fertiliser.kg -[ 1 sow.turnip + 1 harvest.forage.ha + 1 fertiliser.ha + 1 fodder.ha + 6 hours ]> 10 chicory.feed.t | 10 months | global/$months = 5
+swede : 0.4 swede.seed.kg + 90 N.fertiliser.kg + 200 P.fertiliser.kg + 125 K.fertiliser.kg -[ 1 sow.turnip + 1 harvest.forage.ha + 1 fertiliser.ha + 1 fodder.ha + 1 spray.ha + 6 hours ]> 8 swede.feed.t | 7 months | global/$months = 3
+turnip : 5 turnip.seed.kg + 90 N.fertiliser.kg + 200 P.fertiliser.kg + 125 K.fertiliser.kg -[ 1 sow.turnip + 1 harvest.forage.ha + 1 fertiliser.ha + 1 fodder.ha + 1 spray.ha + 6 hours ]> 5 turnip.feed.t | 5 months | global/$months = 4
+stubbleneep : 3.6 stubbleneep.seed.kg + 90 N.fertiliser.kg + 100 P.fertiliser.kg + 50 K.fertiliser.kg -[ 1 sow.turnip + 1 fertiliser.ha + 1 harvest.forage.ha + 1 fodder.ha + 6 hours ]> 4 stubbleneep.feed.t | 3 months | global/$months = 5
+fodderbeet : 3.5 fodderbeet.seed.kg + 100 N.fertiliser.kg + 60 P.fertiliser.kg + 150 K.fertiliser.kg -[ 1 sow.turnip + 1 fertiliser.ha + 1 harvest.forage.ha + 1 fodder.ha + 6 hours ]> 13 fodderbeet.feed.t | 7 months | global/$months = 3
+#
+#
+##----------------------------------------------------------------------------------------
+#
+### grazing ###
+# sward improvement FMH pg76
+grass.improve.plough : 37 grass.seed.kg -[ 1 plough.ha + 1 spray.ha + 1 sow.grass.other.ha + 1 grass.ha + 3.1 hours ]> 1 grazing.ha + 6000 silage.DM.kg | 1 year
+grass.improve.directdrill : 37 grass.seed.kg -[ 1 spray.ha + 1 sow.grass.directdrill.ha + 1 grass.ha + 3.1 hours ]> 1 grazing.ha + 6000 silage.DM.kg | 1 year
+grass.improve.oversow : 18 grass.seed.kg -[ 1 sow.grass.other.ha + 1 ha + 3.1 grass.ha ]> 1 grazing.ha + 6000 hay.DM.kg | 1 year
+# FMH pg 80, silage yield assumes 130 N kg.ha & 2 cuts
+# use mid-value for fertilizer
+grazing : 14 grass.seed.kg + 125 N.fertiliser.kg + 10 P.fertiliser.kg + 15 K.fertiliser.kg -[ 1 fertiliser.ha + 1 sow.grass.ha + 1 grass.ha + 3.1 hours ]> 5000 grass.DM.kg + 6000 silage.DM.kg | 1 year
+grazing.rough : rough.grazing.ha -[ 1.5 hours ]> rough.grazing.ha | 1 year
+#
+silage : 125 N.fertiliser.kg -[ fertiliser.ha + 1 silage.ha + 1 spray.ha + 11 hours ]> 20000 silage.kg | 3 months | global/$months > 4 & global/$months < 8
+hay : 125 N.fertiliser.kg -[ fertiliser.ha + 1 silage.ha + 1 spray.ha ]> 6000 hay.kg | 3 months | global/$months > 4 & global/$months < 8
+#
+# FMH averaged values (i.e. 125 kg/N)
+#
+#
+#
+#
+#
+##----------------------------------------------------------------------------------------
+#
+### potatoes ###
+# FMH average covered and open
+potato.new : 3.5 potato.seed.t + 90 N.fertiliser.kg + 150 P.fertiliser.kg + 110 K.fertiliser.kg -[ 1 fertiliser.ha + 6 spray.ha + 1 potato.ha ]> 14 new.potato.t | 5 months | global/$months = 4
+potato.early : 2.4 potato.seed.t + 175 N.fertiliser.kg + 130 P.fertiliser.kg + 200 K.fertiliser.kg -[ 1 fertiliser.ha + 12 spray.ha + 1 potato.ha ]> 44.5 early.potato.t | 3 months | global/$months = 4
+potato.salad : 5 potato.seed.t + 90 N.fertiliser.kg + 170 P.fertiliser.kg + 110 K.fertiliser.kg -[ 1 fertiliser.ha + 12 spray.ha + 1 potato.ha ]> 37 salad.potato.t + 4 stock.potato.t | 4 months | global/$months = 4
+potato.baker : 2.4 potato.seed.t + 200 N.fertiliser.kg + 130 P.fertiliser.kg + 200 K.fertiliser.kg -[ 1 fertiliser.ha + 16 spray.ha + 1 potato.ha ]> 20 baker.potato.t + 28.5 prepack.potato.t + 9 outgrade.potato.t | 5 months | global/$months = 4
+potato.premium : 1.9 potato.seed.t + 180 N.fertiliser.kg + 130 P.fertiliser.kg + 200 K.fertiliser.kg -[ 11 fertiliser.ha + 5 spray.ha + 1 potato.ha ]> 51 premium.potato.t + 6.5 outgrade.potato.t | 5 months | global/$months = 4
+potato.chip : 3 potato.seed.t + 180 N.fertiliser.kg + 130 P.fertiliser.kg + 300 K.fertiliser.kg -[ 1 fertiliser.ha + 15 spray.ha + 1 potato.ha ]> 52 chip.potato.t + 6.5 outgrade.potato.t | 5 months | global/$months = 4
+potato.crisp : 3 potato.seed.t + 200 N.fertiliser.kg + 130 P.fertiliser.kg + 300 K.fertiliser.kg -[ 1 fertiliser.ha + 15 spray.ha + 1 potato.ha ]> 44 crisp.potato.t + 4 outgrade.potato.t | 5 months | global/$months = 4
+potato.seed : 4.8 potato.seed.t + 80 N.fertiliser.kg + 170 P.fertiliser.kg + 110 K.fertiliser.kg -[ 1 fertiliser.ha + 15 spray.ha + 1 potato.ha ]> 25 potato.seed.t + 2 stock.potato.t | 5 months | global/$months = 4
+#
+#
+#
+#
+##########################################################################################
+# ENHANCED CONDITIONALITY ----------------------------------------------------------------
+##########################################################################################
+#
+## correct soil pH - £111/ha/4y + £10.16/ha spreading -> 121.16/4 -> 30.29/y + 6.22% yield increase
+#wheat.winter.low : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 6.37 wheat.grain.t + 3.4 wheat.straw.t | 7 months | global/$months = 3
+#wheat.winter.medium : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 8.5 wheat.grain.t + 4.46 wheat.straw.t | 7 months | global/$months = 3
+#wheat.winter.high : 230 wheat.seed.kg + 200 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 6 spray.ha + 1 wheat.ha + 18 hours ]> 10.62 wheat.grain.t + 5.52 wheat.straw.t | 7 months | global/$months = 3
+#wheat.spring.low : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 4.78 wheat.grain.t + 2.66 wheat.straw.t | 11 months | global/$months = 9
+#wheat.spring.medium : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 6.9 wheat.grain.t + 3.82 wheat.straw.t | 11 months | global/$months = 9
+#wheat.spring.high : 220 wheat.seed.kg + 150 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 wheat.ha + 18 hours ]> 9.03 wheat.grain.t + 4.99 wheat.straw.t | 11 months | global/$months = 9
+#barley.winter.low : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 6.37 barley.grain.t + 3.51 barley.straw.t | 5 months | global/$months = 3
+#barley.winter.medium : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 7.97 barley.grain.t + 4.36 barley.straw.t | 5 months | global/$months = 3
+#barley.winter.high : 220 barley.seed.kg + 180 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 9.56 barley.grain.t + 5.31 barley.straw.t | 5 months | global/$months = 3
+#barley.spring.low : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 4.25 barley.grain.t + 2.23 barley.straw.t | 11 months | global/$months = 9
+#barley.spring.medium : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 5.84 barley.grain.t + 3.08 barley.straw.t | 11 months | global/$months = 9
+#barley.spring.high : 190 barley.seed.kg + 130 N.fertiliser.kg + 52 P.fertiliser.kg + 71 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 barley.winter.ha + 18 hours ]> 7.97 barley.grain.t + 4.14 barley.straw.t | 11 months | global/$months = 9
+#oats.winter.low : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 5.58 oat.grain.t + 3.4 oat.straw.t | 6 months | global/$months = 3
+#oats.winter.medium : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 7.97 oat.grain.t + 4.99 oat.straw.t | 6 months | global/$months = 3
+#oats.winter.high : 190 oat.seed.kg + 140 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 4 spray.ha + 1 oats.winter.ha + 18 hours ]> 9.56 oat.grain.t + 6.05 oat.straw.t | 11 months | global/$months = 3
+#oats.spring.low : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 3.72 oat.grain.t + 2.23 oat.straw.t | 11 months | global/$months = 9
+#oats.spring.medium : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 5.31 oat.grain.t + 3.19 oat.straw.t | 11 months | global/$months = 9
+#oats.spring.high : 220 oat.seed.kg + 100 N.fertiliser.kg + 53 P.fertiliser.kg + 104 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 3 spray.ha + 1 oats.spring.ha + 18 hours ]> 6.9 oat.grain.t + 4.14 oat.straw.t | 11 months | global/$months = 9
+#oilseedrape.winter.low : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg + 1 analysis -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 3.19 OSR.grain.t | 12 months | global/$months = 8
+#oilseedrape.winter.medium : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg + 1 analysis -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 4.25 OSR.grain.t | 12 months | global/$months = 8
+#oilseedrape.winter.high : 5 OSR.seed.kg + 200 N.fertiliser.kg + 49 P.fertiliser.kg + 38 K.fertiliser.kg + 75 S.fertiliser.kg + 1 analysis -[ 1 sow.osr.ha + 1 combine.osr.ha + 1 fertiliser.ha + 3 spray.ha + 1 oilseedrape.winter.ha + 16 hours ]> 5.31 OSR.grain.t | 12 months | global/$months = 8
+#
+correct.soil.pH ! ( *wheat* ) 1 analysis -> mean wheat.grain.t += % 6.22 + mean wheat.straw.t += % 6.22 | 1 year
+#
+#
+## sub-soiling (loosen compaction): 
+## improves 2% crop & 1% grass yields
+#subsoil.compaction : 0.1 hours -[ 1 combine.cereal.ha ]> | 10 years
+#
+## bassed on Eory 2015, only considering grass and not crops in rotation
+#grazing.fixation : 14 grass.legume.seed.kg + 50 N.fertiliser.kg + 10 P.fertiliser.kg + 15 K.fertiliser.kg -[ 1 fertiliser.ha + 1 sow.grass.ha + 1 grass.ha + 3.1 hours ]> 5000 grass.DM.kg + 6000 silage.DM.kg | 1 year
+#
+## halve the nitrogen, -1 tractor pass and all yield is for feed
+#pea.barley.winter.low : 220 barley.seed.kg + 90 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 6.37 barley.grain.t + 3.51 barley.straw.t | 5 months | global/$months = 3
+#pea.barley.winter.medium : 220 barley.seed.kg + 90 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 7.97 barley.grain.t + 4.36 barley.straw.t | 5 months | global/$months = 3
+#pea.barley.winter.high : 220 barley.seed.kg + 90 N.fertiliser.kg + 67 P.fertiliser.kg + 83 K.fertiliser.kg + 1 analysis -[ 1 sow.cereal + 1 combine.cereal.ha + 1 fertiliser.ha + 5 spray.ha + 1 barley.winter.ha + 18 hours ]> 9.56 barley.grain.t + 5.31 barley.straw.t | 5 months | global/$months = 3
+#
+## legumes in rotation - affects next crop, not current
+#
+### improved animal health
+## improved.dairy.health : costs + £28/cow/year + £500/farm +6.38% milk
+## improved.nutrition : 2% higher weights, £250/farm (beef & sheep)
+## improved.sheep : £850/year 10% non-LFA, 20% LFA lambs/y
+## improved.breeding : 10% more animals -10% forage + 10% costs of animal replacements
+## high.fat.diet : 7.8% concentrate -> OSR £40/head
+## nitrate.feed : 260 nitrate.feed.kg 
+## feed.3NOP : 1000 3NOP.kg dairy 2000 3NOP.kg beef
+## slurry.acidification : £3/t slurry
+#
+#grazing.shoe : 14 grass.seed.kg + 115 N.fertiliser.kg + 10 P.fertiliser.kg + 15 K.fertiliser.kg + 28 cow.excreta.m3 -[ 1 fertiliser.ha + 1 sow.grass.ha + 1 grass.ha + 3.1 hours + 1 slurry.shoe]> 5000 grass.DM.kg + 6000 silage.DM.kg | 1 year
+#grazing.injection : 14 grass.seed.kg + 115 N.fertiliser.kg + 10 P.fertiliser.kg + 15 K.fertiliser.kg + 28 cow.excreta.m3 -[ 1 fertiliser.ha + 1 sow.grass.ha + 1 grass.ha + 3.1 hours + 1 slurry.injection]> 5000 grass.DM.kg + 6000 silage.DM.kg | 1 year
+#
+#nitrification.inhibitors : £0.1/kgN
+#
+#anaerobic.digestor.250kw : 1800 dairy cows + 360 beef cows + 5000t maize -[ ]> 250 kW | 12 months
+#anaerobic.digestor.500kw : 2000 sows + 100000 layers + 300000 broilers + 10000t maize -[ ]> 500 kW | 12 months
+#anaerobic.digestor.1000kw : 40000t maize -[ ]> 1000 kW | 12 months
+#
+#organic.manure : -50 N.kg
